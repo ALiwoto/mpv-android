@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pref_audio_language_default" translatable="false">japanese,japan,jp,ja,english,en</string>
+    <string name="pref_subtitle_language_default" translatable="false">english,en</string>
+    <string name="capture_menu">Capture menu</string>
+    <string name="capture_screenshot">Screenshot</string>
+    <string name="capture_record">Record</string>
+    <string name="capture_begin">Begin timestamp</string>
+    <string name="capture_end">End recording</string>
+    <string name="capture_confirm">Confirm</string>
+    <string name="capture_subtitles">Subtitles</string>
+    <string name="capture_store_method">Store method</string>
+    <string name="capture_telegram">Telegram</string>
+    <string name="capture_local">Local Storage</string>
+    <string name="capture_telegram_settings">Telegram Settings</string>
+    <string name="capture_bot_token">Bot token</string>
+    <string name="capture_chat_id">Chat ID</string>
+    <string name="capture_caption">Caption</string>
+    <string name="capture_document">Send as document</string>
+    <string name="capture_gif">Send as GIF (no audio)</string>
+    <string name="capture_audio">Audio</string>
+    <string name="capture_audio_none">None</string>
+    <string name="capture_audio_search">Search audio tracks</string>
+    <string name="capture_token_required">Enter a valid bot token.</string>
+    <string name="capture_chat_required">Enter a chat ID or @channelusername.</string>
+    <string name="capture_caption_limit">Captions can contain up to 1024 characters.</string>
+    <string name="capture_settings_unreadable">Saved capture settings could not be decrypted. Enter the Telegram credentials again.</string>
+    <string name="capture_seekable_required">Marking a clip requires a seekable video. Live streams cannot be exported this way.</string>
+    <string name="capture_video_required">Open a video before capturing.</string>
+    <string name="capture_begin_required">Choose Begin timestamp in this video first.</string>
+    <string name="capture_invalid_interval">End recording must be after the begin timestamp.</string>
+    <string name="capture_source_changed">The video changed while this dialog was open. Open the capture settings again.</string>
+    <string name="capture_marked">Recording begins at %1$s. Mark again to replace it.</string>
+    <string name="capture_interval">%1$s – %2$s\nFast clips may begin at the preceding keyframe. GIFs are silent MP4 animations; subtitles are not included in recordings.</string>
+    <string name="capture_busy">Finish the current capture first.</string>
+    <string name="capture_exporting">Exporting clip…</string>
+    <string name="capture_uploading">Uploading to Telegram…</string>
+    <string name="capture_saving">Saving capture…</string>
+    <string name="capture_cancelling">Cancelling…</string>
+    <string name="capture_sent">Sent to Telegram.</string>
+    <string name="capture_saved">Capture saved to Local Storage.</string>
+    <string name="capture_failed">Capture failed</string>
+    <string name="capture_save_copy">Save captured file</string>
+    <string name="capture_discard">Discard</string>
+    <string name="capture_save_cancelled">No destination selected. Save the captured file or discard it.</string>
+    <string name="capture_picker_failed">Could not open the storage picker: %1$s</string>
+</resources>

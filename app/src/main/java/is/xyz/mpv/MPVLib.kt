@@ -21,7 +21,11 @@ object MPVLib {
     external fun attachSurface(surface: Surface)
     external fun detachSurface()
 
-    external fun command(cmd: Array<out String>)
+    fun command(cmd: Array<out String>) {
+        commandWithResult(cmd)
+    }
+
+    external fun commandWithResult(cmd: Array<out String>): Int
 
     external fun setOptionString(name: String, value: String): Int
 

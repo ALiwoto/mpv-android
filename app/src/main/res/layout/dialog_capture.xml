@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/recordingInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <CheckBox
+            android:id="@+id/subtitleCheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/capture_subtitles" />
+
+        <CheckBox
+            android:id="@+id/gifCheck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/capture_gif" />
+
+        <LinearLayout
+            android:id="@+id/audioGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:labelFor="@id/audioChoice"
+                android:text="@string/capture_audio" />
+
+            <Button
+                android:id="@+id/audioChoice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:labelFor="@id/storeMethod"
+            android:text="@string/capture_store_method" />
+
+        <Spinner
+            android:id="@+id/storeMethod"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:spinnerMode="dropdown" />
+
+        <LinearLayout
+            android:id="@+id/telegramGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/telegramExpand"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawableEnd="@android:drawable/arrow_down_float"
+                android:text="@string/capture_telegram_settings" />
+
+            <LinearLayout
+                android:id="@+id/telegramFields"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <EditText
+                    android:id="@+id/botToken"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/capture_bot_token"
+                    android:inputType="textPassword"
+                    android:importantForAutofill="no"
+                    android:saveEnabled="false"
+                    android:singleLine="true" />
+
+                <EditText
+                    android:id="@+id/chatId"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/capture_chat_id"
+                    android:inputType="textNoSuggestions"
+                    android:saveEnabled="false"
+                    android:singleLine="true" />
+
+                <EditText
+                    android:id="@+id/caption"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/capture_caption"
+                    android:inputType="textCapSentences|textMultiLine"
+                    android:saveEnabled="false" />
+
+                <CheckBox
+                    android:id="@+id/documentCheck"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/capture_document" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

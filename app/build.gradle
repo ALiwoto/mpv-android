@@ -41,6 +41,13 @@ android {
         buildConfig = true
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += ['**/libffmpeg.so']
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled = true

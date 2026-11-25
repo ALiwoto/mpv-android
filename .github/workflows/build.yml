@@ -1,8 +1,17 @@
 name: build
 
 on:
-  - push
-  - pull_request
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      signed:
+        description: Build signed release APKs
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
 
 jobs:
   linux:
@@ -13,6 +22,21 @@ jobs:
         with:
           java-version: '17'
           distribution: temurin
+
+      - name: Prepare release signing
+        if: github.event_name == 'workflow_dispatch' && inputs.signed
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64" || { echo 'Missing ANDROID_KEYSTORE_BASE64 secret'; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo 'Missing ANDROID_KEYSTORE_PASSWORD secret'; exit 1; }
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/mpv-release.p12"
+          keytool -list -keystore "$RUNNER_TEMP/mpv-release.p12" -storepass:env KEYSTORE_PASSWORD -alias mpv-quest
+          echo "ANDROID_SIGNING_KEY=$RUNNER_TEMP/mpv-release.p12" >> "$GITHUB_ENV"
+          echo 'ANDROID_SIGNING_ALIAS=mpv-quest' >> "$GITHUB_ENV"
 
       - name: Export env vars
         run: buildscripts/include/ci.sh export >>$GITHUB_ENV
@@ -26,8 +50,10 @@ jobs:
       - name: Install packages
         run: |
           sudo apt-get update
-          sudo apt-get install autoconf pkgconf libtool ninja-build python3-pip gperf nasm
-          sudo pip3 install meson
+          sudo apt-get install -y autoconf pkgconf libtool ninja-build python3-pip python3-venv gperf nasm
+          python3 -m venv "$RUNNER_TEMP/mpv-build-tools"
+          "$RUNNER_TEMP/mpv-build-tools/bin/pip" install meson
+          echo "$RUNNER_TEMP/mpv-build-tools/bin" >> "$GITHUB_PATH"
 
       - name: Download or build deps
         run: |
@@ -38,8 +64,24 @@ jobs:
           CACHE_FOLDER: "${{ github.workspace }}/gh-cache"
 
       - name: Build
+        env:
+          ANDROID_SIGNING_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.signed && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
         run: |
           buildscripts/include/ci.sh build
+
+      - name: Upload signed release
+        if: github.event_name == 'workflow_dispatch' && inputs.signed
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpv-android-signed-release
+          path: |
+            app/build/outputs/apk/*/release/*-signed.apk
+            app/build/outputs/bundle/defaultRelease/*-signed.aab
+          if-no-files-found: error
+
+      - name: Remove runner signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/mpv-release.p12"
 
       - uses: actions/upload-artifact@v7
         with:

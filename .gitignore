@@ -11,3 +11,6 @@ build/
 local.properties
 ndk.properties
 *~
+
+.local-tmp/
+.local-private/

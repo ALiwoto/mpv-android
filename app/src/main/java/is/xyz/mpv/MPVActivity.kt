@@ -85,6 +85,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private lateinit var binding: PlayerBinding
     private lateinit var gestures: TouchGestures
+    private lateinit var capture: CaptureController
 
     // convenience alias
     private val player get() = binding.player
@@ -201,6 +202,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             topLockBtn.setOnClickListener { lockUI() }
             topPiPBtn.setOnClickListener { goIntoPiP() }
             topMenuBtn.setOnClickListener { openTopMenu() }
+            captureMenuBtn.setOnClickListener { capture.showMenu(it) }
             unlockBtn.setOnClickListener { unlockUI() }
             playbackDurationTxt.setOnClickListener {
                 useTimeRemaining = !useTimeRemaining
@@ -260,6 +262,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         binding = PlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        capture = CaptureController(this, player, ::pauseForDialog)
 
         // Init controls to be hidden and view fullscreen
         hideControls()
@@ -372,6 +375,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         stopServiceRunnable.run()
 
         player.removeObserver(this)
+        capture.close()
         player.destroy()
         super.onDestroy()
     }
@@ -2012,6 +2016,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             finishWithResult(if (playbackHasStarted) RESULT_OK else RESULT_CANCELED)
 
         if (eventId == MpvEvent.MPV_EVENT_START_FILE) {
+            capture.onFileStarted()
             val cmds = onloadCommands.toTypedArray()
             onloadCommands.clear()
             for (c in cmds)
@@ -2021,6 +2026,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             }
 
             playbackHasStarted = true
+        }
+
+        if (eventId == MpvEvent.MPV_EVENT_FILE_LOADED) {
+            player.selectPreferredTracks()
         }
 
         if (!activityIsForeground) return

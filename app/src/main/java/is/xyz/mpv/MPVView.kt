@@ -14,6 +14,7 @@ import `is`.xyz.mpv.MPVLib.MpvFormat.MPV_FORMAT_INT64
 import `is`.xyz.mpv.MPVLib.MpvFormat.MPV_FORMAT_NONE
 import `is`.xyz.mpv.MPVLib.MpvFormat.MPV_FORMAT_STRING
 import kotlin.reflect.KProperty
+import java.util.Locale
 
 internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context, attrs) {
     override fun initOptions() {
@@ -42,10 +43,10 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         MPVLib.setOptionString("display-fps-override", refreshRate.toString())
 
         // set non-complex options
-        data class Property(val preferenceName: String, val mpvOption: String)
+        data class Property(val preferenceName: String, val mpvOption: String, val defaultValue: String = "")
         val opts = arrayOf(
-                Property("default_audio_language", "alang"),
-                Property("default_subtitle_language", "slang"),
+                Property("default_audio_language", "alang", context.getString(R.string.pref_audio_language_default)),
+                Property("default_subtitle_language", "slang", context.getString(R.string.pref_subtitle_language_default)),
 
                 // vo-related
                 Property("video_scale", "scale"),
@@ -61,8 +62,8 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
                 Property("video_tscale_param2", "tscale-param2")
         )
 
-        for ((preferenceName, mpvOption) in opts) {
-            val preference = sharedPreferences.getString(preferenceName, "")
+        for ((preferenceName, mpvOption, defaultValue) in opts) {
+            val preference = sharedPreferences.getString(preferenceName, defaultValue)
             if (!preference.isNullOrBlank())
                 MPVLib.setOptionString(mpvOption, preference)
         }
@@ -240,6 +241,51 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
                     mpvId=mpvId,
                     name=trackName
             ))
+        }
+    }
+
+    fun selectPreferredTracks() {
+        val priorities = mapOf(
+            "sub" to context.getString(R.string.pref_subtitle_language_default),
+            "audio" to context.getString(R.string.pref_audio_language_default)
+        )
+        val count = MPVLib.getPropertyInt("track-list/count") ?: return
+        for ((type, languages) in priorities) {
+            val option = if (type == "sub") "slang" else "alang"
+            val selection = if (type == "sub") "sid" else "aid"
+            val configuredLanguages = MPVLib.getPropertyString("options/$option")
+            // Explicit language/track settings (including disabled tracks) take precedence.
+            if ((!configuredLanguages.isNullOrBlank() && configuredLanguages != languages) ||
+                MPVLib.getPropertyString("options/$selection") != "auto") {
+                continue
+            }
+            val candidates = (0 until count).mapNotNull { index ->
+                val prefix = "track-list/$index"
+                if (MPVLib.getPropertyString("$prefix/type") != type) {
+                    return@mapNotNull null
+                }
+                val id = MPVLib.getPropertyInt("$prefix/id") ?: return@mapNotNull null
+                val language = MPVLib.getPropertyString("$prefix/lang").orEmpty().lowercase(Locale.ROOT)
+                val title = MPVLib.getPropertyString("$prefix/title").orEmpty().lowercase(Locale.ROOT)
+                val words = (language + " " + title).split(Regex("[^a-z]+"))
+                // Containers commonly use the ISO 639-2 spellings instead of en/ja.
+                val tokens = words.map {
+                    when (it) {
+                        "eng" -> "en"
+                        "jpn" -> "ja"
+                        else -> it
+                    }
+                }
+                id to tokens
+            }
+            val preferred = languages.split(',').firstNotNullOfOrNull { language ->
+                candidates.firstOrNull { language in it.second }?.first
+            }
+            if (preferred != null) {
+                // Back up auto before switching, so this file's choice cannot pin the next file.
+                MPVLib.setPropertyString("file-local-options/$selection", "auto")
+                MPVLib.setPropertyInt(selection, preferred)
+            }
         }
     }
 

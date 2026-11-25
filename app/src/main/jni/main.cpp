@@ -24,7 +24,7 @@ extern "C" {
     jni_func(void, init);
     jni_func(void, destroy);
 
-    jni_func(void, command, jobjectArray jarray);
+    jni_func(jint, commandWithResult, jobjectArray jarray);
 };
 
 JavaVM *g_vm;
@@ -96,7 +96,7 @@ jni_func(void, destroy) {
     g_mpv = NULL;
 }
 
-jni_func(void, command, jobjectArray jarray) {
+jni_func(jint, commandWithResult, jobjectArray jarray) {
     CHECK_MPV_INIT();
 
     jstring strings[64] = {0};
@@ -110,10 +110,11 @@ jni_func(void, command, jobjectArray jarray) {
         arguments[i] = env->GetStringUTFChars(strings[i], NULL);
     }
 
-    mpv_command(g_mpv, arguments);
+    int result = mpv_command(g_mpv, arguments);
 
     for (jsize i = 0; i < len; ++i) {
         env->ReleaseStringUTFChars(strings[i], arguments[i]);
         env->DeleteLocalRef(strings[i]);
     }
+    return result;
 }

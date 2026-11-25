@@ -38,6 +38,16 @@ fi
 PREFIX32="$prefix32" PREFIX64="$prefix64" PREFIX_X64="$prefix_x64" PREFIX_X86="$prefix_x86" \
 ndk-build -C app/src/main -j$cores
 
+# Android installs executables from lib/<abi>/ when named like shared libraries.
+# Run from nativeLibraryDir: executing files from writable app data is forbidden.
+for pair in "armv7l:armeabi-v7a" "arm64:arm64-v8a" "x86:x86" "x86_64:x86_64"; do
+	arch=${pair%%:*}
+	abi=${pair#*:}
+	if [ -d "app/src/main/libs/$abi" ]; then
+		install -m 755 "$BUILD/prefix/$arch/bin/ffmpeg" "app/src/main/libs/$abi/libffmpeg.so"
+	fi
+done
+
 ### Java parts
 # Android's gradle plugin needs both of these to correctly strip libraries.
 # We could pass them directly to Gradle but by using this file it will persist
@@ -59,17 +69,27 @@ fi
 
 ### Signing
 if [ -n "$ANDROID_SIGNING_KEY" ]; then
+	apk_signing_args=()
+	jar_signing_args=()
+	if [ -n "$ANDROID_SIGNING_ALIAS" ]; then
+		apk_signing_args+=(--ks-key-alias "$ANDROID_SIGNING_ALIAS")
+	fi
+	if [ -n "$ANDROID_SIGNING_PASSWORD" ]; then
+		apk_signing_args+=(--ks-pass env:ANDROID_SIGNING_PASSWORD --key-pass env:ANDROID_SIGNING_PASSWORD)
+		jar_signing_args+=(-storepass:env ANDROID_SIGNING_PASSWORD -keypass:env ANDROID_SIGNING_PASSWORD)
+	fi
 	cd "app/build/outputs/apk"
 	apksigner=${ANDROID_HOME}/build-tools/${v_sdk_build_tools}/apksigner
 	for v in default allstorage; do
 		pushd $v
 		# sign only the universal debug APK
-		"$apksigner" sign --ks "${ANDROID_SIGNING_KEY}" \
+		"$apksigner" sign --ks "${ANDROID_SIGNING_KEY}" "${apk_signing_args[@]}" \
 			--in debug/app-$v-universal-debug.apk --out debug/app-$v-universal-debug-signed.apk
 		# but all of the release APKs
 		for apk in release/*-unsigned.apk; do
-			"$apksigner" sign --ks "${ANDROID_SIGNING_KEY}" \
-				--in $apk --out ${apk/-unsigned/-signed}
+			"$apksigner" sign --ks "${ANDROID_SIGNING_KEY}" "${apk_signing_args[@]}" \
+				--in "$apk" --out "${apk/-unsigned/-signed}"
+			"$apksigner" verify "${apk/-unsigned/-signed}"
 		done
 		popd
 	done
@@ -81,7 +101,7 @@ if [ -n "$ANDROID_SIGNING_KEY" ]; then
 			exit 1
 		fi
 		pushd defaultRelease
-		jarsigner -keystore "${ANDROID_SIGNING_KEY}" -signedjar \
+		jarsigner -keystore "${ANDROID_SIGNING_KEY}" "${jar_signing_args[@]}" -signedjar \
 			app-default-release-signed.aab app-default-release.aab \
 			"${ANDROID_SIGNING_ALIAS}"
 		popd
