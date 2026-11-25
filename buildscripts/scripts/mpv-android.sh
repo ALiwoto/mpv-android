@@ -14,8 +14,6 @@ else
 	exit 255
 fi
 
-[ -n "$ANDROID_SIGNING_KEY" ] && BUNDLE=1
-
 nativeprefix () {
 	if [ -f $BUILD/prefix/$1/lib/libmpv.so ]; then
 		echo "$(realpath "$BUILD/prefix/$1")"
@@ -94,8 +92,8 @@ if [ -n "$ANDROID_SIGNING_KEY" ]; then
 		popd
 	done
 	# and the bundle
-	cd ../bundle
 	if [ -n "$BUNDLE" ]; then
+		cd ../bundle
 		if [ -z "$ANDROID_SIGNING_ALIAS" ]; then
 			echo >&2 "Error: ANDROID_SIGNING_ALIAS must be set to use jarsigner"
 			exit 1
