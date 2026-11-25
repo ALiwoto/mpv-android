@@ -1,6 +1,7 @@
 package `is`.xyz.mpv
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager
@@ -17,6 +18,9 @@ import kotlin.reflect.KProperty
 import java.util.Locale
 
 internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context, attrs) {
+    private val hasVrHeadTracking = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            context.packageManager.hasSystemFeature(PackageManager.FEATURE_VR_HEADTRACKING)
+
     override fun initOptions() {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
 
@@ -120,10 +124,15 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         if (event.actionMasked == MotionEvent.ACTION_SCROLL) {
             val h = event.getAxisValue(MotionEvent.AXIS_HSCROLL)
             val v = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
-            if (h > 0)
+            if (h != 0f && isControllerScroll(event)) {
+                // The default wheel binding seeks 10 seconds per unit. Controller scrolls
+                // are continuous, so reduce that distance and avoid keyframe-sized jumps.
+                seekFromController(h * 10.0 * CONTROLLER_SEEK_SCALE)
+            } else if (h > 0) {
                 MPVLib.command(arrayOf("keypress", "WHEEL_RIGHT", "$h"))
-            else if (h < 0)
+            } else if (h < 0) {
                 MPVLib.command(arrayOf("keypress", "WHEEL_LEFT", "${-h}"))
+            }
             if (v > 0)
                 MPVLib.command(arrayOf("keypress", "WHEEL_UP", "$v"))
             else if (v < 0)
@@ -133,11 +142,48 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         return false
     }
 
+    private fun isController(event: InputEvent): Boolean {
+        val device = event.device
+        return event.isFromSource(InputDevice.SOURCE_GAMEPAD) ||
+                event.isFromSource(InputDevice.SOURCE_JOYSTICK) ||
+                device?.supportsSource(InputDevice.SOURCE_GAMEPAD) == true ||
+                device?.supportsSource(InputDevice.SOURCE_JOYSTICK) == true
+    }
+
+    private fun isControllerScroll(event: MotionEvent): Boolean {
+        if (isController(event)) {
+            return true
+        }
+        if (!hasVrHeadTracking) {
+            return false
+        }
+        // Headset runtimes can expose controller thumbsticks as emulated mouse scrolls.
+        // External mice keep their normal bindings; no vendor/model identifiers are used.
+        val device = event.device ?: return true
+        return device.isVirtual ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !device.isExternal)
+    }
+
+    private fun seekFromController(seconds: Double) {
+        MPVLib.command(arrayOf("seek", seconds.toString(), "relative+exact"))
+    }
+
     fun onKey(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_MULTIPLE)
             return false
         if (KeyEvent.isModifierKey(event.keyCode))
             return false
+
+        if (event.hasNoModifiers() &&
+            (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT || event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) &&
+            isController(event)) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                val direction = if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1
+                // Android supplies controller repeats. Do not also start mpv's key-repeat loop.
+                seekFromController(direction * 5.0 * CONTROLLER_SEEK_SCALE)
+            }
+            return true
+        }
 
         var mapped = keyMapping[event.keyCode]
         if (mapped == null) {
@@ -437,6 +483,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
 
     companion object {
         private const val TAG = "mpv"
+        private const val CONTROLLER_SEEK_SCALE = 0.1
 
         // mpv option `hwdec` is set to this
         private const val HWDECS = "mediacodec,mediacodec-copy"
