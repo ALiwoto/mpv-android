@@ -25,7 +25,8 @@ import java.util.concurrent.Executors
 internal class CaptureController(
     private val activity: MPVActivity,
     private val player: MPVView,
-    private val pauseForDialog: () -> StateRestoreCallback
+    private val pauseForDialog: () -> StateRestoreCallback,
+    private val onMenuVisibilityChanged: () -> Unit
 ) {
     private data class Marker(val path: String, val generation: Long, val time: Double)
 
@@ -40,6 +41,10 @@ internal class CaptureController(
     private var restorePlayback: StateRestoreCallback? = null
     private var busy = false
     private var pendingSave: File? = null
+    private var menu: PopupWindow? = null
+
+    val isMenuShowing: Boolean
+        get() = menu?.isShowing == true
 
     private val saveLauncher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val file = pendingSave ?: return@registerForActivityResult
@@ -59,6 +64,7 @@ internal class CaptureController(
 
     fun close() {
         closed = true
+        menu?.dismiss()
         exporter?.cancel()
         upload?.cancel()
         progress?.dismiss()
@@ -66,6 +72,10 @@ internal class CaptureController(
     }
 
     fun showMenu(anchor: View) {
+        if (isMenuShowing) {
+            menu?.dismiss()
+            return
+        }
         val density = activity.resources.displayMetrics.density
         val content = LinearLayout(activity).apply {
             orientation = LinearLayout.VERTICAL
@@ -79,6 +89,21 @@ internal class CaptureController(
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
             elevation = 12 * activity.resources.displayMetrics.density
             isOutsideTouchable = true
+            inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
+            setOnDismissListener {
+                menu = null
+                if (!closed) {
+                    onMenuVisibilityChanged()
+                }
+            }
+        }
+        fun measureMenu() {
+            // PopupWindow positions WRAP_CONTENT using the negative layout constant,
+            // not the content height. Measure before asking it to fit above/below the anchor.
+            content.measure(
+                View.MeasureSpec.makeMeasureSpec(popup.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(popup.getMaxAvailableHeight(anchor), View.MeasureSpec.AT_MOST)
+            )
         }
         fun button(parent: LinearLayout, title: Int, action: () -> Unit): Button {
             val button = Button(activity, null, android.R.attr.borderlessButtonStyle).apply {
@@ -103,8 +128,12 @@ internal class CaptureController(
         }
         content.addView(submenu)
         fun expandRecord() {
+            if (submenu.visibility == View.VISIBLE) {
+                return
+            }
             submenu.visibility = View.VISIBLE
-            popup.update()
+            measureMenu()
+            popup.update(anchor, popup.width, content.measuredHeight)
         }
         record.setOnClickListener { expandRecord() }
         record.setOnHoverListener { _, event ->
@@ -121,7 +150,11 @@ internal class CaptureController(
             popup.dismiss()
             showSettings(true)
         }
+        measureMenu()
+        popup.height = content.measuredHeight
+        menu = popup
         popup.showAsDropDown(anchor, 0, 0, Gravity.END)
+        onMenuVisibilityChanged()
     }
 
     private fun markBegin() {

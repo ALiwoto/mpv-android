@@ -18,8 +18,10 @@ import kotlin.reflect.KProperty
 import java.util.Locale
 
 internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(context, attrs) {
-    private val hasVrHeadTracking = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            context.packageManager.hasSystemFeature(PackageManager.FEATURE_VR_HEADTRACKING)
+    // Horizon OS advertises its own VR capability instead of Android's headtracking feature.
+    private val hasVrControllerInput = context.packageManager.hasSystemFeature("oculus.hardware.standalone_vr") ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                    context.packageManager.hasSystemFeature(PackageManager.FEATURE_VR_HEADTRACKING))
 
     override fun initOptions() {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -154,7 +156,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         if (isController(event)) {
             return true
         }
-        if (!hasVrHeadTracking) {
+        if (!hasVrControllerInput) {
             return false
         }
         // Headset runtimes can expose controller thumbsticks as emulated mouse scrolls.
@@ -483,7 +485,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
 
     companion object {
         private const val TAG = "mpv"
-        private const val CONTROLLER_SEEK_SCALE = 0.1
+        private const val CONTROLLER_SEEK_SCALE = 0.05
 
         // mpv option `hwdec` is set to this
         private const val HWDECS = "mediacodec,mediacodec-copy"

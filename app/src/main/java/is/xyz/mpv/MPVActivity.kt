@@ -262,7 +262,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         binding = PlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        capture = CaptureController(this, player, ::pauseForDialog)
+        capture = CaptureController(this, player, ::pauseForDialog, ::showControls)
 
         // Init controls to be hidden and view fullscreen
         hideControls()
@@ -712,7 +712,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private fun controlsShouldBeVisible(): Boolean {
         if (lockedUI)
             return false
-        return useAudioUI || btnSelected != -1 || userIsOperatingSeekbar
+        return useAudioUI || btnSelected != -1 || userIsOperatingSeekbar || capture.isMenuShowing
     }
 
     /** Make controls visible, also controls the timeout until they fade. */
