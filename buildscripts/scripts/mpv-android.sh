@@ -58,7 +58,11 @@ printf '%s\n' \
 if [ -n "$DONT_BUILD_RELEASE" ]; then
 	./gradlew assembleDebug
 else
-	./gradlew assembleDebug assembleRelease
+	if [ -n "$ANDROID_SIGNING_KEY" ]; then
+		./gradlew assembleRelease
+	else
+		./gradlew assembleDebug assembleRelease
+	fi
 	if [ -n "$BUNDLE" ]; then
 		# needs to be a separate invocation due to AGP bugs...
 		./gradlew bundleRelease
@@ -66,7 +70,7 @@ else
 fi
 
 ### Signing
-if [ -n "$ANDROID_SIGNING_KEY" ]; then
+if [ -n "$ANDROID_SIGNING_KEY" ] && [ -z "$DONT_BUILD_RELEASE" ]; then
 	apk_signing_args=()
 	jar_signing_args=()
 	if [ -n "$ANDROID_SIGNING_ALIAS" ]; then
@@ -80,10 +84,6 @@ if [ -n "$ANDROID_SIGNING_KEY" ]; then
 	apksigner=${ANDROID_HOME}/build-tools/${v_sdk_build_tools}/apksigner
 	for v in default allstorage; do
 		pushd $v
-		# sign only the universal debug APK
-		"$apksigner" sign --ks "${ANDROID_SIGNING_KEY}" "${apk_signing_args[@]}" \
-			--in debug/app-$v-universal-debug.apk --out debug/app-$v-universal-debug-signed.apk
-		# but all of the release APKs
 		for apk in release/*-unsigned.apk; do
 			"$apksigner" sign --ks "${ANDROID_SIGNING_KEY}" "${apk_signing_args[@]}" \
 				--in "$apk" --out "${apk/-unsigned/-signed}"
